@@ -267,7 +267,6 @@ pub mod xml {
                     );
                 }
             }
-            println!("{:#?}", units);
         }
 
         // --- Process the context elements ---

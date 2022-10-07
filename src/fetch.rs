@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use indicatif::ProgressIterator;
 use reqwest::{blocking::Client, header::USER_AGENT};
 use serde::Deserialize;
 use serde_json::{Number, Value};
 
-use crate::utils::without_dash;
+use crate::utils::{get_bar, without_dash};
 
 const LIST_JSON_URL: &str = "https://www.sec.gov/files/company_tickers.json";
 
@@ -160,7 +161,12 @@ pub fn get_quarterly_urls(submission: &EntrySubmission) -> Vec<String> {
     let cik = &submission.cik;
     submissions.push(submission.filings.recent.clone());
     // get old filings if there are any
-    for file in submission.filings.files.iter() {
+    for file in submission
+        .filings
+        .files
+        .iter()
+        .progress_with(get_bar(submission.filings.files.len()))
+    {
         let old_submission = get_old_submission(&file.name);
         submissions.push(old_submission.clone());
         println!("fetched submission: {}", submissions.len());
@@ -168,7 +174,7 @@ pub fn get_quarterly_urls(submission: &EntrySubmission) -> Vec<String> {
 
     println!("submissions: {:#?}", submissions.len());
     // loop through every submission ever sent
-    for submission in submissions {
+    for submission in submissions.iter().progress_with(get_bar(submissions.len())) {
         // match only quarterlies in each submission
         for (i, entry) in submission.form.iter().enumerate() {
             match entry.as_str() {
@@ -201,7 +207,6 @@ pub fn get_quarterly_urls(submission: &EntrySubmission) -> Vec<String> {
             }
         }
     }
-    println!("{:#?}", url_array);
     println!("files obtained: {}", url_array.len());
     url_array
 }
@@ -209,7 +214,7 @@ pub fn get_quarterly_urls(submission: &EntrySubmission) -> Vec<String> {
 pub fn get_quarterly_xmls(urls: &Vec<String>) -> Vec<String> {
     let mut raw_xmls = Vec::new();
     let client = Client::new();
-    for url in urls.iter() {
+    for url in urls.iter().progress_with(get_bar(urls.len())) {
         let response = client
             .get(url)
             .header(USER_AGENT, ua)
@@ -221,6 +226,5 @@ pub fn get_quarterly_xmls(urls: &Vec<String>) -> Vec<String> {
         };
         raw_xmls.push(raw_xml);
     }
-    // println!("{:#?}", raw_xmls[0]);
     raw_xmls
 }
